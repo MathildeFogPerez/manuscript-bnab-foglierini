@@ -1,6 +1,6 @@
 # manuscript-bnab-foglierini
 
-Scripts to convert paired BCRs data into a features table used to predict HIV BnAb using three different machine learning algorithms: AD (anomaly detection), DT (decision tree) and RF (random forest).
+Three machine learning models to predict Bnabs in the repertoires of HIV-1 immune donors: Anomaly Detection (AD), Decision Tree (DT) and Random Forest (RF)
 
 Copyright (C) 2023  Mathilde Foglierini Perez
 
@@ -11,7 +11,7 @@ email: mathilde.foglierini-perez@chuv.ch
 We have made available here a series of scripts to process scBCR sequencing data coming from HIV-1 immune donors in order to find BnAb in their repertoires. 
 The scripts are primarily intended as reference for manuscript "###TOADD###" rather than a stand-alone application.
 
-Raw data are available at https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?&acc=GSE229123
+Raw data of paired BCRs coming from HIV immune donors are available at https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?&acc=GSE229123
 
 These scripts were run on a Linux machine.
 
