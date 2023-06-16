@@ -9,7 +9,7 @@ email: mathilde.foglierini-perez@chuv.ch
 ### SUMMARY ###
 
 We have made available here a series of scripts to process scBCR sequencing data coming from HIV-1 immune donors in order to find BnAb in their repertoires. 
-The scripts are primarily intended as reference for manuscript "###TOADD###" rather than a stand-alone application.
+The scripts are primarily intended as reference for manuscript "Automatic identification of HIV-1 bnAbs by machine learning " rather than a stand-alone application.
 
 Raw data of paired BCRs coming from HIV immune donors are available at https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?&acc=GSE229123
 
