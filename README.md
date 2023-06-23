@@ -37,7 +37,9 @@ c) Change-O https://changeo.readthedocs.io/en/stable/install.html#installation
 
 #### Machine learning algorithms
 
-The jupyter notebook can be run after installing the following Python libraries (using Python 3.8.16):
+The jupyter notebook can be run after installing Graphitz: https://graphviz.org/download/
+
+Python libraries (using Python 3.8.16):
 - scikit-learn v1.0.2
 - matplotlib 3.6.2
 - scipy 1.8.1
