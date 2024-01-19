@@ -1,0 +1,304 @@
+---
+title: "Features converter for RAIN algo"
+output: pdf_document
+date: "`r format(Sys.time(), '%a %d %B')`"
+---
+
+```{r setup, include=FALSE} 
+# silence the warnings
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo=F, fig.path = "images/") 
+
+#This script will take in input the changeO output file after igblast annotation, MakeDb.py and ParseDb.py from Immcantation workflow
+# Is is mandatory to go through this pipeline in order to have the 'sequence_alignment' and 'germline_alignment' fields that are CRUCIAL
+# to calculate the mutation frequency of FWR1+CDR1+FWR2+CDR2+FWR3 or unconventional mutation frequency FWR1+FWR2+FWR3
+
+```
+
+```{r loadlib,echo=F}
+library(dplyr)
+library(stringr)
+library(seqinr)
+```
+
+```{r setupdir}
+#We add a prefix for the sequence ID in the case of several 10X experiments 
+run="S4"
+
+print(paste0("Processing RUN: ",run))
+
+#path where there is the change-O de-pass_parse-select.tsv file file 
+datapath=paste0("/home/localadmin/github_PUBLICATIONS/manuscript-bnab-foglierini/HIVdonors_FILES/",run,"/")
+changeo_file=paste0(datapath,run,'_filtered_contig_igblast_db-pass_parse-select.tsv')
+
+outpath=datapath #you can choose a new path here
+
+```
+
+```{r functions_for_translation}
+
+translateDNAwithDeletion <- function(char_dna_sequence) {
+  codon_table <- list(
+    TTT = "F", TTC = "F", TTA = "L", TTG = "L",
+    TCT = "S", TCC = "S", TCA = "S", TCG = "S",
+    TAT = "Y", TAC = "Y", TAA = "*", TAG = "*",
+    TGT = "C", TGC = "C", TGA = "*", TGG = "W",
+    CTT = "L", CTC = "L", CTA = "L", CTG = "L",
+    CCT = "P", CCC = "P", CCA = "P", CCG = "P",
+    CAT = "H", CAC = "H", CAA = "Q", CAG = "Q",
+    CGT = "R", CGC = "R", CGA = "R", CGG = "R",
+    ATT = "I", ATC = "I", ATA = "I", ATG = "M",
+    ACT = "T", ACC = "T", ACA = "T", ACG = "T",
+    AAT = "N", AAC = "N", AAA = "K", AAG = "K",
+    AGT = "S", AGC = "S", AGA = "R", AGG = "R",
+    GTT = "V", GTC = "V", GTA = "V", GTG = "V",
+    GCT = "A", GCC = "A", GCA = "A", GCG = "A",
+    GAT = "D", GAC = "D", GAA = "E", GAG = "E",
+    GGT = "G", GGC = "G", GGA = "G", GGG = "G", 
+    '---' = "-"
+  )
+  codons <- strsplit(char_dna_sequence, "(?<=\\G...)", perl = TRUE)[[1]] 
+  protein_sequence <- sapply(codons, function(codon) {
+    if (codon %in% names(codon_table)) {
+      codon_table[[codon]] # putting quoted single letter AA codes one after another
+    } else {
+      "X"
+    }
+  })
+  return(paste(protein_sequence, collapse = "")) # removing the quotations, creates a string
+}
+
+#function that takes the sequence_alignment and will remove '.' to not have STOP codon in the sequence
+translateDNAaligned=function(x,frame=0){
+  #for fwr1 only, be sure to have the rigth frame
+  if(substr(x,0,1)=='.'){ #start with missing nuc in FWR1
+    #print(" ")
+    firstPointIndex=0
+    nuc=unlist(strsplit(x, split=""))
+    for(n in nuc){
+         if (n=='.') {
+            firstPointIndex = firstPointIndex+1
+         }
+        else{
+          break
+        }
+    }
+    #we change the frame accordingly
+    #substract a multiple of 3
+    result = firstPointIndex - (firstPointIndex %% 3)
+    index= firstPointIndex-result
+    if(index ==1){
+      frame=2
+    }
+    if(index==2){
+      frame=1
+    }
+    if(index==3){
+      frame=0
+    }
+  }
+  dna=str_remove_all(x, "\\.")
+  nuc=unlist(strsplit(dna, split=""))
+  aa=seqinr::translate(nuc, frame=frame)
+  prot=paste(aa, sep="", collapse="") 
+  #if stop codon try with a new frame
+  if(grepl("*",prot,fixed=T)){
+    print("STOP codon found in:")
+    print(prot)
+  }
+  return(prot)
+}
+
+```
+
+
+```{r functions_for_rain_features}
+
+#function to get the CDR3 length
+getCdr3Length=function(x){
+  hcdr_length=nchar(x)
+  return(hcdr_length)
+}
+
+#function to calculate a hydrophobicity score for the CDR3
+getHydrophobicityScore=function(x){
+  #print(x)
+  hydro=0
+  cdr3_split=strsplit(x,"")[[1]]
+  for(aa in cdr3_split){
+    if (aa == 'Y') {
+      hydro = hydro + 0.75
+    } else if (aa == 'W') {
+      hydro = hydro + 1
+    } else if (aa == 'F') {
+      hydro = hydro +  0.5
+    } else if (aa == 'A' || aa == 'L' || aa == 'I' || aa == 'M' || aa == 'P' || aa == 'V') {
+      hydro = hydro +  0.1
+    }
+  }
+  return(hydro)
+}
+
+#function to remove allele from the VDJ call
+removeAllele=function(x){
+  asterixIndex=strsplit(x,"*",fixed=T)
+  if (!is.na(asterixIndex)){
+    return(asterixIndex[[1]][1])
+  }
+  return(x)
+}
+
+#function used to get either fwrs+cdrs mutation frequency, either only frws- We do not used FWR4.
+getMutFreq=function(seqAlign,germAlign,part1,part2,fwr3){
+  
+  #1. get indexes of the different regions on the sequence_alignment
+  endPart1= str_locate(pattern=part1,seqAlign)[2]
+  indexesPart2=str_locate(pattern=part2,seqAlign)
+  startPart2=indexesPart2[1]
+  endPart2=indexesPart2[2]
+  indexesFwr3=str_locate(pattern=fwr3,seqAlign)
+  startFwr3=indexesFwr3[1]
+  endFwr3=indexesFwr3[2]
+  
+  #2.Get the related nuc sequences and translate them
+  vSeq=paste0(part1,part2,fwr3)
+  GL.part1=substring(germAlign,0,endPart1)
+  GL.part2=substring(germAlign,startPart2,endPart2)
+  GL.fwr3=substring(germAlign,startFwr3,endFwr3)
+  GL.vSeq=paste0(GL.part1,GL.part2,GL.fwr3)
+  #print(vSeq)
+  #print(GL.vSeq)
+  
+  vSeq=translateDNAwithDeletion(vSeq)
+  GL.vSeq=translateDNAwithDeletion(GL.vSeq)
+  vLength=nchar(vSeq)
+  GLvLength=nchar(GL.vSeq)
+  
+  if(vLength != GLvLength ){ #should not happen
+    print("NOT THE SAME length of sequences!")
+    break
+  }
+  
+  #3. Get the differences between the 2 seq and return the freq
+  diff=0
+  index=1
+  for(aa in unlist(strsplit(vSeq, split=""))){
+    #we do not ocunt a mismatch because of missing nuc in fwr1 in some sequences
+    if (aa != substr(GL.vSeq,index,index) && aa != 'X'){
+      diff=diff+1
+    }
+    index=index+1
+  }
+  freq=diff/vLength
+  freq.rounded=round(freq,digits = 2)  
+  #print(vSeq)
+  #print(GL.vSeq)
+  #print(paste0(diff," freq is = ",freq))
+  
+  return(freq.rounded)
+}
+
+
+```
+
+```{r make_filtered_paired_df}
+#here we will create a dataframe where one row correspond to one clonotype = 1VH +VK/L
+df = read.csv(changeo_file,sep = "\t")
+
+print(paste0("Initial number of sequences: ",nrow(df)))
+print(paste0("Initial number of cell barcodes: ",length(unique(df$cell_id))))
+
+#we remove clonotypes that have less or more than 2 chains 
+df=df[df$cell_id %in% names(which(table(df$cell_id) == 2)), ]
+print(paste0("Number of cell barcodes with 2 chains: ",length(unique(df$cell_id))))
+
+#Remove incomplete data 
+df=df[!df$fwr1=="",]
+df=df[!df$cdr1=="",]
+df=df[!df$fwr2=="",]
+df=df[!df$cdr2=="",]
+df=df[!df$fwr3=="",]
+df=df[!df$cdr3=="",]
+df=df[!df$fwr4=="",]
+df=df[!df$germline_alignment=="",]
+print(paste0("After removing incomplete data, number of sequences: ",nrow(df)))
+print(paste0("After removing incomplete data, number of cell barcodes: ",length(unique(df$cell_id))))
+
+#we create a new column with the nt and the aa sequences
+df$sequence_nt=str_remove_all(df$sequence_alignment, "\\.")
+df$sequence_aa=sapply(df$sequence_alignment,translateDNAaligned)
+df$cdr3_aa=sapply(df$cdr3,translateDNAaligned)
+df=df[!grepl("*",df$sequence_aa,fixed=T),]
+print(paste0("After removing Ab with stop codon in the sequence, number of sequences: ",nrow(df)))
+print(paste0("After removing Ab with stop codon in the sequence, number of cell barcodes: ",length(unique(df$cell_id))))
+
+#we remove clonotype with only 1 heavy or 1 light chain 
+df=df[df$cell_id %in% names(which(table(df$cell_id) == 2)), ]
+print(paste0("Number of cell barcodes with 2 chains: ",length(unique(df$cell_id))))
+
+
+#split the file in heavy and light
+df$chain=ifelse(df$locus == "IGK"|df$locus =="IGL","light","heavy")
+df=df %>% relocate(locus, .before = chain)
+dfs=split(df,df$chain)
+
+#add prefix to heavy and light table
+df.heavy=dfs$heavy
+names(df.heavy)=paste0("h_",names(df.heavy))
+df.light=dfs$light
+names(df.light)=paste0("l_",names(df.light))
+
+paired.df= merge(df.heavy,df.light, by.x = "h_cell_id", by.y = "l_cell_id", all = F)
+print(paste0("After pairing heavy and light, number of clonotypes with 1VH+1VK/VL is : ",nrow(paired.df)))
+
+#we will add a new id that is unique for each cell/clonotype
+paired.df$sequence_id=paste0(run,"_clono",rownames(paired.df))
+paired.df=paired.df %>% relocate(sequence_id, everything())
+
+
+#select our columns of interest, HERE you can add other columns if you wish
+paired.df= paired.df %>% dplyr::select(sequence_id,h_cell_id,h_sequence_nt,h_sequence_aa,h_v_call,h_j_call,h_c_call, 
+                                       h_fwr1,h_cdr1,h_fwr2,h_cdr2,h_fwr3,h_cdr3,h_cdr3_aa,
+                                       h_sequence_alignment,h_germline_alignment,
+                                       l_v_call,l_j_call,l_c_call,l_sequence_nt,l_sequence_aa,l_cdr3,l_cdr3_aa)
+
+
+#View(paired.df)
+```
+
+
+
+
+
+
+```{r create_features_for_RAIN, eval=T,results='hide'}
+#we will add new features column in the previous dataframe
+
+#We add the feature columns at the end
+paired.df$vh.gene=sapply(paired.df$h_v_call,removeAllele)
+paired.df$HCDR3.length=sapply(paired.df$h_cdr3_aa,getCdr3Length)  
+paired.df$hcdr3.hydrophobicity=sapply(paired.df$h_cdr3_aa,getHydrophobicityScore)
+paired.df$vl.gene=sapply(paired.df$l_v_call,removeAllele)
+paired.df$LCDR3.length=sapply(paired.df$l_cdr3_aa,getCdr3Length)
+
+#We add the mutation frequencies unconventional (FWRs1-2-3 only) and V gene (FWRs1-2-3-CDRs1-2)
+paired.df$mut.freq=mapply(getMutFreq,paired.df$h_sequence_alignment,paired.df$h_germline_alignment,paste0(paired.df$h_fwr1,paired.df$h_cdr1),
+                          paste0(paired.df$h_fwr2,paired.df$h_cdr2),paired.df$h_fwr3)
+
+paired.df$fwrs.mut.freq=mapply(getMutFreq,paired.df$h_sequence_alignment,paired.df$h_germline_alignment,paired.df$h_fwr1,
+                          paired.df$h_fwr2,paired.df$h_fwr3)
+
+#We add extra feature known for CD4BS 'VH1.lcdr3_5' and MPER 'VH1-69.VK3-20.GW'
+paired.df$VH1.lcdr3_5=ifelse(((paired.df$vh.gene =="IGHV1-2" |paired.df$vh.gene =="IGHV1-46") & paired.df$LCDR3.length==5),1,0)
+paired.df$'VH1-69.VK3-20.GW'=ifelse((paired.df$vh.gene =="IGHV1-69" & paired.df$vl.gene =="IGKV3-20" & str_detect(paired.df$h_cdr3,"GW")),1,0)
+
+
+View(paired.df)
+## Check if we have  sequence with NA value for Freq.mut!! -> we should not
+#paired.df[is.na(paired.df$mut.freq),]
+colSums(is.na(paired.df))
+
+write.table(paired.df,file=paste0(outpath,run,"_featuresTable.tsv"),sep="\t",row.names = F)
+
+```
+
+

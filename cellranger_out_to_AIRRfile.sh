@@ -30,6 +30,7 @@ MakeDb.py igblast -i "$SAMPLE"_filtered_contig_igblast.fmt7 -s filtered_contig.f
 #Keep only the productive sequences
 ParseDb.py select -d "$SAMPLE"_filtered_contig_igblast_db-pass.tsv -f productive -u T
 
+#split the file in 2
 ParseDb.py select -d "$SAMPLE"_filtered_contig_igblast_db-pass_parse-select.tsv -f locus -u "IGH" --logic all --regex --outname heavy
 ParseDb.py select -d "$SAMPLE"_filtered_contig_igblast_db-pass_parse-select.tsv -f locus -u "IG[LK]" --logic all --regex --outname light
 
