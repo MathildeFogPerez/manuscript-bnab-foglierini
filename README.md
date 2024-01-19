@@ -49,7 +49,7 @@ Python libraries (using Python 3.8.16):
 - graphviz 0.20
  
 
-### PIPELINE  long version ### FOR PUBLICAION
+### PIPELINE  long version ### FOR PUBLICATION
 
 1. Create a directory for each experiment and create a metadata.txt file in each directory:
 
