@@ -1,15 +1,17 @@
 # manuscript-bnab-foglierini
 
-Three machine learning models to predict Bnabs in the repertoires of HIV-1 immune donors: Anomaly Detection (AD), Decision Tree (DT) and Random Forest (RF)
+Rapid Automatic Identification of bNAbs (RAIN) to identify bNAbs from antibody immune repertoire.
+Three machine learning models are used to predict Bnabs in the repertoires of HIV-1 immune donors: Anomaly Detection (AD), Decision Tree (DT) and Random Forest (RF)
 
-Copyright (C) 2023  Mathilde Foglierini Perez
+Copyright (C) 2024  Mathilde Foglierini Perez
 
 email: mathilde.foglierini-perez@chuv.ch
 
 ### SUMMARY ###
 
 We have made available here a series of scripts to process scBCR sequencing data coming from HIV-1 immune donors in order to find BnAb in their repertoires. 
-The scripts are primarily intended as reference for manuscript "Automatic identification of HIV-1 bnAbs by machine learning " rather than a stand-alone application.
+The scripts are primarily intended as reference for the manuscript "AI-based identification of HIV-1 bNAbs from immune repertoire".
+If you aim to run our pipeline please follow the **PIPELINE short version**.
 
 Raw data of paired BCRs coming from HIV immune donors are available at https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?&acc=GSE229123
 
@@ -25,15 +27,19 @@ This code is distributed open source under the terms of the Apache License, Vers
 
 #### Paireds BCR repertoires processing 
 
-As previously described [here](https://github.com/MathildeFogPerez/manuscript-rep-phad/tree/main) we developped a pipeline to generate a cutomized table of paired BCRs in AIRR format.
-
 The following software are required:
 
-a) Java JDK 15 https://www.oracle.com/java/technologies/javase/jdk15-archive-downloads.html
+a) IgBlast v1.17.1  or download latest version from https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST
 
-b) IgBlast v1.17.1  or download latest version from https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST
+b) Change-O v1.2 or latest https://changeo.readthedocs.io/en/stable/install.html#installation 
 
-c) Change-O https://changeo.readthedocs.io/en/stable/install.html#installation
+c) R v4.2 with [tidyverse](https://www.tidyverse.org/) and [seqinr](https://cran.r-project.org/web/packages/seqinr/index.html) packages
+
+
+As previously described [here](https://github.com/MathildeFogPerez/manuscript-rep-phad/tree/main) we developed a pipeline to generate a customized table of paired BCRs in AIRR format.
+
+Please install [Java JDK 15](https://www.oracle.com/java/technologies/javase/jdk15-archive-downloads.html), instead of R, if you want to run the **long version** of the pipeline:
+
 
 #### Machine learning algorithms
 
@@ -49,7 +55,7 @@ Python libraries (using Python 3.8.16):
 - graphviz 0.20
  
 
-### PIPELINE  long version ### FOR PUBLICATION
+### PIPELINE long version ### FOR PUBLICATION
 
 1. Create a directory for each experiment and create a metadata.txt file in each directory:
 
@@ -66,6 +72,8 @@ Python libraries (using Python 3.8.16):
         java -jar PrepareFeaturesTableFromAirrFile.jar G4 MY_WORKING_DIR/HIVdonors_AIRR/G4/AIRR_file_G4.tsv
 
 4. Launch the jupyter notebooks by setting the experiment name and path: run first the AnomalyDetection_PUB.ipynb and then the DecisionTree_RandomForest_PUB.ipynb
+   
+5. The SuperLearner_PUB.ipynb can be run to confirm the prediction (by AD, DT and RF) of the BnAbs of the HIV+ infected donors
 
 The execution of the jupyter notebooks generate the different figures and files used for the publication:
  * creation of an 'output' folder with related files for the training and validation models for each antigenic site
@@ -80,19 +88,20 @@ The execution of the jupyter notebooks generate the different figures and files 
         -filtered_contig_annotations.csv
         -filtered_contig.fasta
 
-2. Launch the bash script that will result into a $SAMPLE_igblast_db-pass_parse-select.tsv file
+2. For each experiment, launch the bash script that will result into a $SAMPLE_igblast_db-pass_parse-select.tsv file
 
         cellranger_out_to_changeO.sh /MY_WORKING_DIR/ G4 >out_pipeline_G4.txt
 
 
-3. Run the R script RAIN_feature_converted.rmd to create a file with our features of interest $SAMPLE_featuresTable.tsv
+3. For each experiment, run the R script RAIN_feature_converted.rmd to create a file with our features of interest $SAMPLE_featuresTable.tsv
+   The file contains changeO clonotype characteristics (one row = 1VH+1VK/L) and the features used by the ML algorithms. 
 
 
 4. Launch the jupyter notebooks by setting the experiment name and path: [IMPORTANT] run first the AnomalyDetection_PUB.ipynb and then the DecisionTree_RandomForest_PUB.ipynb
 
-The execution of the jupyter notebooks generate the different figures and files used for the publication:
+The execution of the jupyter notebooks generate different figures and files:
  * creation of an 'output' folder with related files for the training and validation models for each antigenic site
- * a predicted bnabs file in AIRR format (+ features columns) for each experiment and each antigenic site
+ * a predicted bnabs tsv file (changeO heavy and light characteristicss + features columns) for each experiment and each antigenic site
 
  <br/><br/>
      

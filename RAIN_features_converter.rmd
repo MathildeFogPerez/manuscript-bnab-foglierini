@@ -15,8 +15,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo=F, fig.path = "imag
 ```
 
 ```{r loadlib,echo=F}
-library(dplyr)
-library(stringr)
+library(tidyverse)
 library(seqinr)
 ```
 
