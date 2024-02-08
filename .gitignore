@@ -12,3 +12,5 @@ output/
 DT_RF_PUB_V1_with2features.ipynb
 Raphael_suggestions.ipynb
 *.html
+.Rhistory
+.gitignore
