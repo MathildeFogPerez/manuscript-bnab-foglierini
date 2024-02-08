@@ -1,0 +1,14 @@
+#the first 3 lines will be removed upon publication
+input_data/
+HIVdonors_AIRR/
+HIVdonors_FILES/
+HIVdonors_AIRR/*/*tree*
+HIVdonors_AIRR/*/*RF*
+HIVdonors_AIRR/*/*anomalyDetection*
+HIVdonors_FILES/*/*tree*
+HIVdonors_FILES/*/*RF*
+HIVdonors_FILES/*/*anomalyDetection*
+output/
+DT_RF_PUB_V1_with2features.ipynb
+Raphael_suggestions.ipynb
+*.html
