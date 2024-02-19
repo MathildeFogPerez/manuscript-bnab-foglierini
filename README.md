@@ -1,7 +1,7 @@
 # manuscript-bnab-foglierini
 
 Rapid Automatic Identification of bNAbs (RAIN) to identify bNAbs from antibody immune repertoire.
-Three machine learning models are used to predict Bnabs in the repertoires of HIV-1 immune donors: Anomaly Detection (AD), Decision Tree (DT) and Random Forest (RF).
+Four machine learning models are used to predict Bnabs in the repertoires of HIV-1 immune donors: Anomaly Detection (AD), Decision Tree (DT), Random Forest (RF) and Super Learner (SL).
 
 Copyright (C) 2024  Mathilde Foglierini Perez
 
@@ -72,6 +72,8 @@ Python libraries (using Python 3.8.16):
 
 
 4. Launch the jupyter notebooks by setting the experiment name and path: **IMPORTANT** run first the AnomalyDetection_PUB.ipynb and then the DecisionTree_RandomForest_PUB.ipynb
+   
+5. The SuperLearner_PUB.ipynb can be run to confirm the prediction (by AD, DT and RF) of the BnAbs of the HIV+ infected donors
 
 The execution of the jupyter notebooks generate different figures and files:
  * creation of an 'output' folder with related files for the training and validation models for each antigenic site
