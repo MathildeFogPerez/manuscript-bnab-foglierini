@@ -1,7 +1,7 @@
 #the first 3 lines will be removed upon publication
-input_data/
-HIVdonors_AIRR/
-HIVdonors_FILES/
+#input_data/
+#HIVdonors_AIRR/
+#HIVdonors_FILES/
 HIVdonors_AIRR/*/*tree*
 HIVdonors_AIRR/*/*RF*
 HIVdonors_AIRR/*/*anomalyDetection*
